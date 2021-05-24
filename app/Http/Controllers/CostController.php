@@ -199,7 +199,7 @@ class CostController extends Controller
                 ], 403);
             }
 
-            $dataCostUpdate->total_cost = $total_cost_item;
+            $dataCostUpdate->total_cost = number_format($total_cost_item, 2, '.', '');
 
             $dataCostUpdate->save();
 
@@ -341,7 +341,7 @@ class CostController extends Controller
                 ], 403);
             }
 
-            $dataCostUpdate->total_cost = $total_cost_item;
+            $dataCostUpdate->total_cost = number_format($total_cost_item, 2, '.', '');
 
             $dataCostUpdate->save();
 
