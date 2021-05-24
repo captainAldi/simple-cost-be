@@ -348,8 +348,6 @@ class CostController extends Controller
             // Jika Semua Normal, Commit ke DB
             DB::commit();
 
-            dd(CostDetail::where('cost_id', $id)->get());
-
         } catch (\Exception $e) {
             // Jika ada yang Gagal, Rollback DB
             DB::rollBack();
