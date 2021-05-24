@@ -228,10 +228,10 @@ class CostController extends Controller
     public function updateCost(Request $request, $id)
     {
         // ------ Hapus Dahulu ------ 
-        $dataCostDetail = CostDetail::where('cost_id', $id)->first();
+        $dataCostDetailCari = CostDetail::where('cost_id', $id)->get();
 
         // Cek Data Ada atau Tidak
-        if(!$dataCostDetail) {
+        if(!$dataCostDetailCari) {
             return response()->json([
                 'message' => 'Data Detail Tidak Ada !',
             ], 404);
@@ -243,6 +243,7 @@ class CostController extends Controller
         try {
 
             // Delete data Cost Detail
+            $dataCostDetail = CostDetail::where('cost_id', $id);
             $dataCostDetail->delete();
 
             // Jika Semua Normal, Commit ke DB
@@ -346,6 +347,8 @@ class CostController extends Controller
 
             // Jika Semua Normal, Commit ke DB
             DB::commit();
+
+            dd(CostDetail::where('cost_id', $id)->get());
 
         } catch (\Exception $e) {
             // Jika ada yang Gagal, Rollback DB
