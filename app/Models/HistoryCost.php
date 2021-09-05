@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
-class Cost extends Model
+class HistoryCost extends Model
 {
 
     /**
@@ -15,12 +15,12 @@ class Cost extends Model
      */
     protected $guarded = [];
 
-    public function costDetails() {
-        return $this->hasMany('App\Models\CostDetail', 'cost_id', 'id');
+    public function historyCostDetails() {
+        return $this->hasMany('App\Models\HistoryCostDetail', 'history_cost_id', 'id');
     }
 
-    public function costHistory() {
-        return $this->hasMany('App\Models\HistoryCost', 'cost_id', 'id');
+    public function costServer() {
+        return $this->belongsTo('App\Models\Cost', 'cost_id', 'id');
     }
 
     public function getCreatedAtAttribute($date)

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Cost;
 use App\Models\CostDetail;
+use App\Models\HistoryCost;
+use App\Models\HistoryCostDetail;
 
 use Illuminate\Http\Request;
 use DB;
@@ -111,17 +113,6 @@ class CostController extends Controller
 
     }
 
-
-    public function getAllCostDetail()
-    {
-        $dataAllCostDetail = CostDetail::get();
-
-        return response()->json([
-            'message' => 'Data Berhasil di Ambil !',
-            'data'    => $dataAllCostDetail
-        ], 200);
-    }
-
     public function createCost(Request $request)
     {
 
@@ -168,6 +159,7 @@ class CostController extends Controller
             $dataCost->lokasi_server = $lokasi_server;
             $dataCost->tipe_server = $tipe_server;
             $dataCost->pic_team_server = $pic_team_server;
+            $dataCost->edited_by_id = '1';
 
             $dataCost->save();
 
@@ -227,8 +219,10 @@ class CostController extends Controller
 
     public function updateCost(Request $request, $id)
     {
-        // ------ Hapus Dahulu ------ 
+
+        // ------ Get Last Data ------
         $dataCostDetailCari = CostDetail::where('cost_id', $id)->get();
+        $dataCost = Cost::where('id', $id)->first();
 
         // Cek Data Ada atau Tidak
         if(!$dataCostDetailCari) {
@@ -236,6 +230,75 @@ class CostController extends Controller
                 'message' => 'Data Detail Tidak Ada !',
             ], 404);
         }
+
+        if(!$dataCost) {
+            return response()->json([
+                'message' => 'Data Tidak Ada !',
+            ], 404);
+        }
+
+        // ------ Copy to History ------
+
+        // Proses Write ke History
+
+        DB::beginTransaction();
+       
+        try {
+            
+            // Simpan Cost History
+            $dataHistoryCost = new HistoryCost();
+            $dataHistoryCost->nama_server = $dataCost->nama_server;
+            $dataHistoryCost->lokasi_server = $dataCost->lokasi_server;
+            $dataHistoryCost->tipe_server = $dataCost->tipe_server;
+            $dataHistoryCost->pic_team_server = $dataCost->pic_team_server;
+            $dataHistoryCost->edited_by_id = '1';
+            $dataHistoryCost->cost_id = $id;
+
+            $dataHistoryCost->save();
+
+
+            foreach ($dataCostDetailCari as $key) {
+                $modelHCD = new HistoryCostDetail();
+                $modelHCD->history_cost_id = $dataHistoryCost->id;
+                $modelHCD->nama_item = $key['nama_item'];
+                $modelHCD->harga_item = $key['harga_item'];
+                $modelHCD->save();
+            }
+
+            // Get Jumlah dari Harga Item per ID
+            $total_cost_history_item = DB::table('history_cost_details')
+                ->join('history_costs', 'history_cost_details.history_cost_id', '=', 'history_costs.id')
+                ->where('history_costs.id', '=', $dataHistoryCost->id)
+                ->sum('history_cost_details.harga_item');
+
+            // Update Total Cost History
+            $dataCostHistoryUpdate = HistoryCost::where('id', $dataHistoryCost->id)->first();
+
+            if (!$dataCostHistoryUpdate) {
+                return response()->json([
+                    'message' => 'Data Tidak Ada !',
+                ], 403);
+            }
+
+            $dataCostHistoryUpdate->total_cost = number_format($total_cost_history_item, 2, '.', '');
+
+            $dataCostHistoryUpdate->save();
+
+            // Jika Semua Normal, Commit ke DB
+            DB::commit();
+
+        } catch (\Exception $e) {
+            // Jika ada yang Gagal, Rollback DB
+            DB::rollBack();
+
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+        
+
+
+        // ------ Hapus Dahulu ------ 
 
         // Mulai Proses Delete
         DB::beginTransaction();
@@ -261,15 +324,6 @@ class CostController extends Controller
         }
 
         // ------ Mulai Update ------ 
-
-        $dataCost = Cost::where('id', $id)->first();
-
-         // Cek Data Ada atau Tidak
-        if(!$dataCost) {
-            return response()->json([
-                'message' => 'Data Tidak Ada !',
-            ], 404);
-        }
 
         // Pesan Jika Error
         $messages = [
@@ -372,6 +426,8 @@ class CostController extends Controller
     {
         $dataCost = Cost::where('id', $id)->first();
         $dataCostDetail = CostDetail::where('cost_id', $id);
+        $dataHistoryCost = HistoryCost::where('cost_id', $id)->first();
+        $dataHistoryCostDetail = HistoryCostDetail::where('history_cost_id', $id);
 
         // Cek Data Ada atau Tidak
         if(!$dataCost || !$dataCostDetail) {
@@ -385,9 +441,11 @@ class CostController extends Controller
 
         try {
 
-            // Delete data Cost dan Cost Detail
+            // Delete data Cost dan Cost Detail serta History
             $dataCost->delete();
             $dataCostDetail->delete();
+            $dataHistoryCost->delete();
+            $dataHistoryCostDetail->delete();
 
             // Jika Semua Normal, Commit ke DB
             DB::commit();
@@ -409,4 +467,40 @@ class CostController extends Controller
         ], 200);
 
     }
+
+    public function getHistoryCost($id)
+    {
+
+        // Data History Cost
+        $dataHistoryCost = HistoryCost::where('cost_id', $id)
+                            // ->orderBy('updated_at', 'desc')
+                            ->with('historyCostDetails')
+                            ->get();
+
+        // Data Cost
+        $dataCost = Cost::where('id', $id)->with('costDetails')->first();
+
+        $tanggalUpdate = [];
+        $totalCost = [];
+
+        foreach ($dataHistoryCost as $key) {
+            // $tanggalUpdate[] = date('d-M-Y', strtotime($key->updated_at));
+            $tanggalUpdate[] = $key->updated_at;
+            $totalCost[] = $key->total_cost;
+        }
+
+        return response()->json([
+            'message' => 'Data Berhasil di Ambil !',
+            'data'    => [
+                'HistoryCost'        => $dataHistoryCost,
+                'TotalCost'          => $totalCost,
+                'TanggalUpdate'      => $tanggalUpdate,
+                'DataCost'           => $dataCost
+            ]
+        ], 200);
+
+
+        
+    }
+    
 }

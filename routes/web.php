@@ -17,10 +17,32 @@ $router->get('/', function () use ($router) {
     return $router->app->version();
 });
 
-$router->get("/coba/get-all-cost", "CostController@getAllCost");
-$router->get("/coba/get-total-summary-cost", "CostController@getTotalSummaryCost");
-$router->get("/coba/get-all-cost-detail", "CostController@getAllCostDetail");
+// OAuth Google
 
-$router->post("/coba/create-cost", "CostController@createCost");
-$router->delete("/coba/delete-cost/{id}", "CostController@deleteCost");
-$router->patch("/coba/update-cost/{id}", "CostController@updateCost");
+$router->get('oauth/google/login', 'AuthController@redirectToProvider');
+$router->get('oauth/google/callback', 'AuthController@handleProviderCallback');
+
+// API
+$router->group(['prefix' => 'api/v1/' ], function() use ($router) {
+
+
+    // Logged In
+    $router->group(['middleware' => ['login'] ], function() use ($router) {
+        
+        $router->get("/cost/get-all", "CostController@getAllCost");
+        $router->get("/cost/get-total-summary", "CostController@getTotalSummaryCost");
+        $router->get("/cost/get-history/{id}", "CostController@getHistoryCost");
+
+
+    });
+
+    // Logged In and Admin
+    $router->group(['middleware' => ['login', 'admin'] ], function() use ($router) {
+        
+        $router->post("/cost/create", "CostController@createCost");
+        $router->delete("/cost/delete/{id}", "CostController@deleteCost");
+        $router->patch("/cost/update/{id}", "CostController@updateCost");
+
+    });
+
+});
