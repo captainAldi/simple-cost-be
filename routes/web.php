@@ -24,7 +24,7 @@ $router->get('oauth/google/callback', 'AuthController@handleProviderCallback');
 
 // API
 $router->group(['prefix' => 'api/v1/' ], function() use ($router) {
-
+ 
 
     // Logged In
     $router->group(['middleware' => ['login'] ], function() use ($router) {

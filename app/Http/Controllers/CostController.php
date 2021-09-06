@@ -52,7 +52,7 @@ class CostController extends Controller
             $semuaCost = $semuaCost->orderBy($var_sort, $tipe_sort);
         }
 
-        $totalCost = $semuaCost->sum('total_cost');
+        $totalCost = number_format($semuaCost->sum('total_cost'), 2, '.', '');
         $totalPlatform = $semuaCost->count();
 
         // Eager Loading
@@ -89,7 +89,7 @@ class CostController extends Controller
         $totalCost = DB::table('costs')->sum('total_cost');
         $totalPlatform = Cost::count();
 
-        $allCostData = Cost::get();
+        $allCostData = Cost::orderBy('total_cost', 'desc')->take(10)->get();
 
         $namaPlatform = [];
         $totalCostPlatform = [];
@@ -104,7 +104,7 @@ class CostController extends Controller
         return response()->json([
             'message' => 'Data Berhasil di Ambil !',
             'data'    => [
-                'TotalCost'        => $totalCost,
+                'TotalCost'        => number_format($totalCost, 2, '.', ''),
                 'TotalPlatform'    => $totalPlatform,
                 'NamaPlatform'     => $namaPlatform,
                 'TotalCostPlatform'        => $totalCostPlatform
